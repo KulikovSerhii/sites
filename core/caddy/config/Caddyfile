@@ -1,0 +1,84 @@
+# https://caddyserver.com/docs/caddyfile/concepts
+# https://caddyserver.com/docs/caddyfile
+
+import global
+import common
+
+# site1
+####################
+site1.com, admin.site1.com {
+  # Базовые правила для всех сайтов
+  import base site1
+
+  # Логи доступа к сайту (не обязательно)
+  import logging site1
+
+  # Правила для сайтов без Cloudflare
+  import origin site1
+}
+
+# Redirect www -> root domain
+www.site1.com {
+  redir https://site1.com{uri}
+}
+####################
+
+# site2
+####################
+site2.com, admin.site2.com {
+  # Базовые правила для всех сайтов
+  import base site2
+
+  # Логи доступа к сайту (не обязательно)
+  import logging site2
+
+  # Правила для сайтов без Cloudflare
+  import origin site2
+}
+
+# Redirect www -> root domain
+www.site2.com {
+  redir https://site2.com{uri}
+}
+####################
+
+# example (правила для сайтов без Cloudflare)
+####################
+# example.com, admin.example.com {
+#   # Базовые правила для всех сайтов
+#   import base example
+
+#   # Логи доступа к сайту (не обязательно)
+#   import logging example
+
+#   # Правила для сайтов без Cloudflare
+#   import origin example
+# }
+
+# # Redirect www -> root domain
+# www.example.com {
+#   redir https://example.com{uri}
+# }
+####################
+
+# example (правила для сайтов за Cloudflare)
+####################
+# example.com, admin.example.com {
+#   # Сертификаты Cloudflare "Origin Server"
+#   tls /certs/example/cert.pem /certs/example/key.pem
+
+#   # Базовые правила для всех сайтов
+#   import base example
+
+#   # Логи доступа к сайту (не обязательно)
+#   import logging example
+
+#   # Правила для сайтов за Cloudflare
+#   import cloudflare example
+# }
+
+# # Redirect www -> root domain
+# www.example.com {
+#   redir https://example.com{uri}
+# }
+####################

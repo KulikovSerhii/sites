@@ -1,0 +1,250 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/compose-spec/compose-spec/main/schema/compose-spec.json
+
+# ПЕРВЫЙ ЗАПУСК
+#
+# 1. Сначала запускаем только MySQL и Adminer (для создания пользователей базы данных и баз данных)
+#   sudo docker compose up -d mysql adminer && sudo docker compose logs -f
+#
+# 2. Выполнить команду для проксирования порта с сервера на локальную машину
+#   ssh user@server -p <ssh_port> -i "C:\Users\<ACCOUNT>\.ssh\private_key" -L 8080:127.0.0.1:8080
+# или пробросить порт 8080 в программе VSCode
+# Открыть Adminer в браузерые: http://localhost:8080/?server=mysql
+#
+# 3. Запускаем все остальные сервисы
+#   sudo docker compose up -d && sudo docker compose logs -f
+
+# ******************************
+
+# ПОВТОРНЫЕ ЗАПУСКИ
+# 
+# Просмотр логов указанного сервиса
+#   sudo docker compose logs -f <имя_сервиса>
+# 
+# Скачиваем свежие версии образов
+#   sudo docker compose pull
+#
+# Пересоздаем локальные образы без кеша с подтягиванием свежих слоев из Docker Hub
+#   sudo docker compose build --no-cache --pull
+#
+# Принудительно пересоздаем контейнеры и запускаем сервисы в фоновом режиме
+#   sudo docker compose up -d --force-recreate
+#
+# Останавливаем и удаляем контейнеры, удаляем сети и анонимные тома (именованные тома с данными сохраняются)
+#   sudo docker compose down
+
+# Полная команда для обновления всех сервисов
+#   sudo docker compose down && sudo docker compose pull && sudo docker compose build --no-cache --pull && sudo docker compose up -d --force-recreate && sudo docker compose logs -f
+
+services:
+  mysql:
+    # https://hub.docker.com/_/mysql
+    # https://dev.mysql.com/doc/relnotes/mysql/8.0/en/
+    image: mysql:8
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    # command: >
+    #   --innodb-buffer-pool-size=1G
+    #   --innodb-log-buffer-size=64M
+    #   --innodb-change-buffer-max-size=25
+    #   --innodb-flush-log-at-trx_commit=0
+    #   --innodb-flush-method=O_DIRECT
+    #   --max_connections=100
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      start_period: 30s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging:
+      driver: "local"
+
+  adminer:
+    # https://hub.docker.com/_/adminer
+    # https://github.com/vrana/adminer/releases
+    image: adminer
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+    logging:
+      driver: "local"
+
+  caddy:
+    # https://hub.docker.com/_/caddy
+    # https://github.com/caddyserver/caddy/releases
+    # https://caddyserver.com/docs/running#docker-compose
+    image: caddy:2
+    environment:
+      - CADDY_EMAIL=${CADDY_EMAIL}
+      - CLOUDFLARE_IPS=${CLOUDFLARE_IPS}
+      - REDIRECTS_PORT=${REDIRECTS_PORT}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # Для QUIC (HTTP/3) -> https://http3check.net/
+    volumes:
+      - ./core/caddy/config:/etc/caddy:ro  # Пробрасываем конфигурационные файлы с хоста в контейнер
+      - ./core/caddy/certs:/certs:ro  # Пробрасываем сертификаты с хоста в контейнер
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    logging:
+      driver: "local"
+
+  redirects:
+    build:
+      context: ./core/redirects/config
+      dockerfile: Dockerfile
+    environment:
+      - REDIRECTS_PORT=${REDIRECTS_PORT}
+      - REDIRECTS_LOGS=${REDIRECTS_LOGS}
+      - PLAUSIBLE_URL=${PLAUSIBLE_URL}
+      - PLAUSIBLE_API_KEY=${PLAUSIBLE_API_KEY}
+    volumes:
+      - ./core/redirects/config/list.json:/home/redirects/list.json:ro  # Пробрасываем список редиректов с хоста в контейнер
+    restart: unless-stopped
+    logging:
+      driver: "local"
+
+  # redis:
+  #   image: redis
+  #   volumes:
+  #     - redis_data:/data
+  #   restart: unless-stopped
+  #   logging:
+  #     driver: "local"
+
+  site1:
+    # Установка Ghost через Docker: https://docs.ghost.org/install/docker
+    # https://hub.docker.com/_/ghost
+    # https://github.com/TryGhost/Ghost/releases
+    image: ghost:6
+    environment:
+      # Документация: https://ghost.org/docs/config
+      # Настройки по умолчанию: /var/lib/ghost/current/core/shared/config/defaults.json
+
+      # General settings
+      # - NODE_ENV=development # Режим разработки (не рекомендуется для продакшн)
+      # - imageOptimization__srcsets=false  # default: true
+      # - imageOptimization__resize=false  # default: true
+      # - admin__url=https://admin.site1.com
+      - url=https://site1.com
+
+      # Database settings - https://docs.ghost.org/config#database
+      - database__client=mysql
+      - database__connection__host=mysql
+      - database__connection__user=${site1_db_user}
+      - database__connection__password=${site1_db_pass}
+      - database__connection__database=${site1_db_name}
+
+      # Email settings - https://docs.ghost.org/config#mail
+      - mail__from=no-reply@site1.com  # От кого идут письма
+      - mail__transport=SMTP  # Тип транспорта — SMTP
+      - mail__options__host=smtp.gmail.com  # SMTP сервер
+      - mail__options__port=587  # Порт с TLS
+      # - mail__options__secure=true  # Использовать TLS
+      - mail__options__auth__user=${site1_mail_user}  # Пользователь SMTP
+      - mail__options__auth__pass=${site1_mail_pass}  # Пароль SMTP
+
+      # Logging settings - https://docs.ghost.org/config#logging
+      - logging__transports=["stdout","file"]  # ["stdout","file"]
+      - logging__level=info
+      - logging__path=/var/lib/ghost/content/logs
+      - logging__rotation__enabled=true
+      - logging__rotation__count=7
+      - logging__rotation__period=1d
+      # - logging__useLocalTime=true
+      # - TZ=${TIMEZONE}
+
+      # Privacy settings - https://docs.ghost.org/config#privacy
+      # - privacy__useUpdateCheck=false  # Отключить проверку обновлений Ghost
+      # - privacy__useRpcPing=false  # Запретить Ghost посылать пинги (RPC)
+
+      # Cache settings - https://docs.ghost.org/config#cache-adapters
+      # https://magicpages.co/blog/how-carexplore-achieved-70-faster-page-loads-with-ghosts-built-in-redis-caching/
+      # - adapters__cache__Redis__host=redis
+
+      # Storage settings - https://docs.ghost.org/config#storage-adapters
+      # - adapters__storage__active=adapterName
+      # - storage__active=adapterName
+    volumes:
+      - ghost_site1_content:/var/lib/ghost/content
+      - ./core/ghost/adapters:/var/lib/ghost/content/adapters  # Пробрасываем адаптеры с хоста в контейнер
+    depends_on:
+      mysql:
+        condition: service_healthy  # Ждём, пока MySQL будет готов
+    restart: unless-stopped
+    logging:
+      driver: "local"
+
+  site2:
+    # Установка Ghost через Docker: https://docs.ghost.org/install/docker
+    # https://hub.docker.com/_/ghost
+    # https://github.com/TryGhost/Ghost/releases
+    image: ghost:6
+    environment:
+      # Документация: https://ghost.org/docs/config
+      # Настройки по умолчанию: /var/lib/ghost/current/core/shared/config/defaults.json
+
+      # General settings
+      # - NODE_ENV=development # Режим разработки (не рекомендуется для продакшн)
+      # - imageOptimization__srcsets=false  # default: true
+      # - imageOptimization__resize=false  # default: true
+      # - admin__url=https://admin.site2.com
+      - url=https://site2.com
+
+      # Database settings - https://docs.ghost.org/config#database
+      - database__client=mysql
+      - database__connection__host=mysql
+      - database__connection__user=${site2_db_user}
+      - database__connection__password=${site2_db_pass}
+      - database__connection__database=${site2_db_name}
+
+      # Email settings - https://docs.ghost.org/config#mail
+      - mail__from=no-reply@site2.com  # От кого идут письма
+      - mail__transport=SMTP  # Тип транспорта — SMTP
+      - mail__options__host=smtp.gmail.com  # SMTP сервер
+      - mail__options__port=587  # Порт с TLS
+      # - mail__options__secure=true  # Использовать TLS
+      - mail__options__auth__user=${site2_mail_user}  # Пользователь SMTP
+      - mail__options__auth__pass=${site2_mail_pass}  # Пароль SMTP
+
+      # Logging settings - https://docs.ghost.org/config#logging
+      - logging__transports=["stdout","file"]  # ["stdout","file"]
+      - logging__level=info
+      - logging__path=/var/lib/ghost/content/logs
+      - logging__rotation__enabled=true
+      - logging__rotation__count=7
+      - logging__rotation__period=1d
+      # - logging__useLocalTime=true
+      # - TZ=${TIMEZONE}
+
+      # Privacy settings - https://docs.ghost.org/config#privacy
+      # - privacy__useUpdateCheck=false  # Отключить проверку обновлений Ghost
+      # - privacy__useRpcPing=false  # Запретить Ghost посылать пинги (RPC)
+
+      # Cache settings - https://docs.ghost.org/config#cache-adapters
+      # https://magicpages.co/blog/how-carexplore-achieved-70-faster-page-loads-with-ghosts-built-in-redis-caching/
+      # - adapters__cache__Redis__host=redis
+
+      # Storage settings - https://docs.ghost.org/config#storage-adapters
+      # - adapters__storage__active=adapterName
+      # - storage__active=adapterName
+    volumes:
+      - ghost_site2_content:/var/lib/ghost/content
+      - ./core/ghost/adapters:/var/lib/ghost/content/adapters  # Пробрасываем адаптеры с хоста в контейнер
+    depends_on:
+      mysql:
+        condition: service_healthy  # Ждём, пока MySQL будет готов
+    restart: unless-stopped
+    logging:
+      driver: "local"
+
+volumes:
+  mysql_data:
+  caddy_data:
+  caddy_config:
+  ghost_site1_content:
+  ghost_site2_content:

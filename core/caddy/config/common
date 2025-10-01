@@ -1,0 +1,175 @@
+# Правила для редиректов
+(redirects) {
+  # Обработка редиректов
+  handle /go/* {
+    reverse_proxy redirects:{$REDIRECTS_PORT}
+  }
+}
+
+# Правила для защиты от хотлинкинга
+(anti-hotlink) {
+  # Anti-Hotlink
+  # https://caddyserver.com/docs/caddyfile/matchers#not
+  # https://caddyserver.com/docs/caddyfile/matchers#path
+  # https://caddyserver.com/docs/caddyfile/matchers#header-regexp
+  @anti-hotlink {
+    # Включить только один из вариантов ниже
+
+    # 1) Если реферер не принадлежит нашему домену
+    # not header_regexp Referer "^https://(my-site-1\.com|my-site-2\.com)/"
+
+    # 2) Если реферер принадлежит плохим сайтам
+    # header_regexp Referer "^https://(bad-site-1\.com|bad-site-2\.com)/"
+
+    path *.webp *.jpg *.jpeg *.png *.gif
+  }
+
+  handle @anti-hotlink {
+    # Включить только один из вариантов ниже
+
+    # 1) Отдать локальный файл вместо хотлинкнутого
+    # rewrite * /layno.jpg  # Файл должен быть внутри контейнера Caddy по пути: /var/www/layno.jpg
+    # file_server {
+    #   root /var/www
+    # }
+
+    # 2) Перенаправить пользователя на внешний URL
+    redir "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/%C5%81ajno_ko%C5%84skie_400.jpg/1920px-%C5%81ajno_ko%C5%84skie_400.jpg" 302
+
+    # 3) Полностью заблокировать доступ
+    # respond "Hotlinking Forbidden" 403
+  }
+}
+
+# Правила для изменения заголовков ответов от бэкенда
+(override-headers) {
+  # Матчер путей статических файлов
+  @staticFiles {
+    path /assets/* /content/* /public/* /favicon.ico
+  }
+
+  # Реверс-прокси под матчер с заменой заголовков
+  handle @staticFiles {
+    reverse_proxy {args[0]}:2368 {
+      # https://caddyserver.com/docs/caddyfile/directives/reverse_proxy#header_down
+      header_down Cache-Control "public, max-age=31536000, immutable"
+    }
+  }
+}
+
+# Базовые правила для всех сайтов
+(base) {
+  # Сжатие ответов
+  encode {
+    zstd
+    gzip
+    minimum_length 256
+  }
+
+  # Заголовки безопасности
+  header {
+    # Скрываем лишние заголовки
+    -Server
+    -X-Powered-By
+    -Via
+
+    # HSTS, принуждает HTTPS
+    Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"  # Добавить домен в https://hstspreload.org
+
+    # Запрещает браузеру определять тип контента сам
+    X-Content-Type-Options "nosniff"
+
+    # Как передаётся заголовок Referer
+    Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Контроль разрешений браузерного API
+    Permissions-Policy "geolocation=(), camera=(), microphone=()"
+
+    # Контроль, откуда можно загружать скрипты, стили, картинки и т.д.
+    # https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy
+    # Content-Security-Policy "default-src 'self' https:; frame-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'self'; upgrade-insecure-requests;"
+  }
+}
+
+# Логи доступа к сайту
+(logging) {
+  log {args[0]} {
+    # https://caddyserver.com/docs/caddyfile/directives/log
+    level INFO
+
+    # Сохранение логов в файл
+    # output file /var/log/caddy/{args[0]}/{args[0]}.log {
+    #   roll_size 100MiB
+    #   roll_keep 5
+    #   roll_local_time
+    # }
+
+    # Вывод логов в консоль
+    output stdout
+
+    # Полноценные логи
+    format json {
+      time_local
+      time_format wall
+      level_format upper
+    }
+
+    # Упрощённые логи
+    # format filter {
+    #   wrap json {
+    #     time_local
+    #     time_format wall
+    #     level_format upper
+    #   }
+
+    #   fields {
+    #     request>headers delete
+    #     request>tls delete
+    #     request>proto delete
+    #     request>remote_port delete
+    #     bytes_read delete
+    #     user_id delete
+    #     size delete
+    #     resp_headers delete
+    #   }
+    # }
+  }
+}
+
+# Правила для сайтов без Cloudflare
+(origin) {
+  import redirects
+  # import anti-hotlink
+  # import override-headers {args[0]}
+
+  # Все остальные запросы
+  handle {
+    reverse_proxy {args[0]}:2368
+  }
+}
+
+# Правила для сайтов за Cloudflare
+(cloudflare) {
+  # https://developers.cloudflare.com/support/troubleshooting/restoring-visitor-ips/restoring-original-visitor-ips/#caddy
+
+  # Список доверенных IP для корректного определения реального IP клиента
+  @cloudflare {
+    remote_ip {$CLOUDFLARE_IPS}
+  }
+
+  # Обработка запросов только от Cloudflare
+  handle @cloudflare {
+    import redirects
+    # Anti-Hotlink = Cloudflare -> Scrape Shield -> Hotlink Protection
+
+    # Все остальные запросы
+    handle {
+      reverse_proxy {args[0]}:2368
+    }
+  }
+
+  # Если не Cloudflare — доступ запрещён для всех остальных
+  handle {
+    respond "Access Denied" 403
+  }
+}

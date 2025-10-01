@@ -1,0 +1,46 @@
+# Global options block
+{
+  # https://caddyserver.com/docs/caddyfile/options
+
+  # Отключаем админский API интерфейс Caddy (localhost:2019)
+  admin off
+
+  # Email для регистрации сертификатов ACME
+  email {$CADDY_EMAIL}
+
+  servers {
+    # Доверяем только IP из списка Cloudflare + локальные сети
+    trusted_proxies static private_ranges {$CLOUDFLARE_IPS}
+
+    # Строго доверяем только IP из trusted_proxies, все остальные заголовки игнорируем
+    trusted_proxies_strict
+
+    # Выбираем реальный IP клиента: CF-Connecting-IP, X-Real-IP или X-Forwarded-For
+    client_ip_headers CF-Connecting-IP X-Real-IP X-Forwarded-For
+  }
+
+  # Глобальные логи Caddy
+  log default {
+    # https://caddyserver.com/docs/caddyfile/options#log
+    level INFO
+
+    # Сохранение логов в файл
+    # output file /var/log/caddy/caddy/system.log {
+    #   roll_size 100MiB
+    #   roll_keep 5
+    #   roll_local_time
+    # }
+
+    # Вывод логов в консоль
+    output stdout
+
+    # Отключение логов (не влияет на логи сайтов)
+    # output discard
+
+    format json {
+      time_local
+      time_format wall
+      level_format upper
+    }
+  }
+}
