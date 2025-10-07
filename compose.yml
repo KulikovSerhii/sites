@@ -180,68 +180,68 @@ services:
     logging:
       driver: "local"
 
-  site2:
-    # Установка Ghost через Docker: https://docs.ghost.org/install/docker
-    # https://hub.docker.com/_/ghost
-    # https://github.com/TryGhost/Ghost/releases
-    image: ghost:6
-    environment:
-      # Документация: https://ghost.org/docs/config
-      # Настройки по умолчанию: /var/lib/ghost/current/core/shared/config/defaults.json
+  # site2:
+  #   # Установка Ghost через Docker: https://docs.ghost.org/install/docker
+  #   # https://hub.docker.com/_/ghost
+  #   # https://github.com/TryGhost/Ghost/releases
+  #   image: ghost:6
+  #   environment:
+  #     # Документация: https://ghost.org/docs/config
+  #     # Настройки по умолчанию: /var/lib/ghost/current/core/shared/config/defaults.json
 
-      # General settings
-      # - NODE_ENV=development # Режим разработки (не рекомендуется для продакшн)
-      # - imageOptimization__srcsets=false  # default: true
-      # - imageOptimization__resize=false  # default: true
-      # - admin__url=https://admin.site2.com
-      - url=https://site2.com
+  #     # General settings
+  #     # - NODE_ENV=development # Режим разработки (не рекомендуется для продакшн)
+  #     # - imageOptimization__srcsets=false  # default: true
+  #     # - imageOptimization__resize=false  # default: true
+  #     # - admin__url=https://admin.site2.com
+  #     - url=https://site2.com
 
-      # Database settings - https://docs.ghost.org/config#database
-      - database__client=mysql
-      - database__connection__host=mysql
-      - database__connection__user=${site2_db_user}
-      - database__connection__password=${site2_db_pass}
-      - database__connection__database=${site2_db_name}
+  #     # Database settings - https://docs.ghost.org/config#database
+  #     - database__client=mysql
+  #     - database__connection__host=mysql
+  #     - database__connection__user=${site2_db_user}
+  #     - database__connection__password=${site2_db_pass}
+  #     - database__connection__database=${site2_db_name}
 
-      # Email settings - https://docs.ghost.org/config#mail
-      - mail__from=info@mg.site2.com  # От кого идут письма
-      - mail__transport=SMTP  # Тип транспорта — SMTP
-      - mail__options__host=smtp.eu.mailgun.org  # SMTP сервер
-      - mail__options__port=587  # STARTTLS порт (рекомендуется Mailgun)
-      - mail__options__secure=false  # Использовать STARTTLS, а не прямой TLS
-      - mail__options__auth__user=${site2_mail_user}  # Пользователь SMTP
-      - mail__options__auth__pass=${site2_mail_pass}  # Пароль SMTP
+  #     # Email settings - https://docs.ghost.org/config#mail
+  #     - mail__from=info@mg.site2.com  # От кого идут письма
+  #     - mail__transport=SMTP  # Тип транспорта — SMTP
+  #     - mail__options__host=smtp.eu.mailgun.org  # SMTP сервер
+  #     - mail__options__port=587  # STARTTLS порт (рекомендуется Mailgun)
+  #     - mail__options__secure=false  # Использовать STARTTLS, а не прямой TLS
+  #     - mail__options__auth__user=${site2_mail_user}  # Пользователь SMTP
+  #     - mail__options__auth__pass=${site2_mail_pass}  # Пароль SMTP
 
-      # Logging settings - https://docs.ghost.org/config#logging
-      - logging__transports=["stdout","file"]  # ["stdout","file"]
-      - logging__level=info
-      - logging__path=/var/lib/ghost/content/logs
-      - logging__rotation__enabled=true
-      - logging__rotation__count=7
-      - logging__rotation__period=1d
-      # - logging__useLocalTime=true
-      # - TZ=${TIMEZONE}
+  #     # Logging settings - https://docs.ghost.org/config#logging
+  #     - logging__transports=["stdout","file"]  # ["stdout","file"]
+  #     - logging__level=info
+  #     - logging__path=/var/lib/ghost/content/logs
+  #     - logging__rotation__enabled=true
+  #     - logging__rotation__count=7
+  #     - logging__rotation__period=1d
+  #     # - logging__useLocalTime=true
+  #     # - TZ=${TIMEZONE}
 
-      # Privacy settings - https://docs.ghost.org/config#privacy
-      # - privacy__useUpdateCheck=false  # Отключить проверку обновлений Ghost
-      # - privacy__useRpcPing=false  # Запретить Ghost посылать пинги (RPC)
+  #     # Privacy settings - https://docs.ghost.org/config#privacy
+  #     # - privacy__useUpdateCheck=false  # Отключить проверку обновлений Ghost
+  #     # - privacy__useRpcPing=false  # Запретить Ghost посылать пинги (RPC)
 
-      # Cache settings - https://docs.ghost.org/config#cache-adapters
-      # https://magicpages.co/blog/how-carexplore-achieved-70-faster-page-loads-with-ghosts-built-in-redis-caching/
-      # - adapters__cache__Redis__host=redis
+  #     # Cache settings - https://docs.ghost.org/config#cache-adapters
+  #     # https://magicpages.co/blog/how-carexplore-achieved-70-faster-page-loads-with-ghosts-built-in-redis-caching/
+  #     # - adapters__cache__Redis__host=redis
 
-      # Storage settings - https://docs.ghost.org/config#storage-adapters
-      # - adapters__storage__active=adapterName
-      # - storage__active=adapterName
-    volumes:
-      - ghost_site2_content:/var/lib/ghost/content
-      - ./core/ghost/adapters:/var/lib/ghost/content/adapters  # Пробрасываем адаптеры с хоста в контейнер
-    depends_on:
-      mysql:
-        condition: service_healthy  # Ждём, пока MySQL будет готов
-    restart: unless-stopped
-    logging:
-      driver: "local"
+  #     # Storage settings - https://docs.ghost.org/config#storage-adapters
+  #     # - adapters__storage__active=adapterName
+  #     # - storage__active=adapterName
+  #   volumes:
+  #     - ghost_site2_content:/var/lib/ghost/content
+  #     - ./core/ghost/adapters:/var/lib/ghost/content/adapters  # Пробрасываем адаптеры с хоста в контейнер
+  #   depends_on:
+  #     mysql:
+  #       condition: service_healthy  # Ждём, пока MySQL будет готов
+  #   restart: unless-stopped
+  #   logging:
+  #     driver: "local"
 
 volumes:
   mysql_data:
