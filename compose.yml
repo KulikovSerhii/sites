@@ -2,24 +2,25 @@
 
 # ПЕРВЫЙ ЗАПУСК
 #
-# 1. Сначала запускаем только MySQL и Adminer (для создания пользователей базы данных и баз данных)
-#   sudo docker compose up -d mysql adminer && sudo docker compose logs -f
+# 1. Запускаем только MySQL и Adminer (для создания пользователей базы данных и баз данных)
+#    sudo docker compose up -d mysql adminer && sudo docker compose logs -f
 #
-# 2. Выполнить команду для проксирования порта с сервера на локальную машину
-#   ssh user@server -p <ssh_port> -i "C:\Users\<ACCOUNT>\.ssh\private_key" -L 8080:127.0.0.1:8080
-# или пробросить порт 8080 в программе VSCode
-# Открыть Adminer в браузерые: http://localhost:8080/?server=mysql
+# 2. Проксируем порт с сервера на локальную машину
+#    ssh user@server -p <ssh_port> -i "C:\Users\<ACCOUNT>\.ssh\private_key" -L 8080:127.0.0.1:8080   (или пробросить порт 8080 в программе VSCode)
 #
-# 3. Запускаем все остальные сервисы
-#   sudo docker compose up -d && sudo docker compose logs -f
+# 3. Открываем Adminer в браузере (создаем пользователей и базы данных): http://localhost:8080/?server=mysql
+#    Сервер: mysql  |  Имя пользователя: root  |  Пароль: из переменной "MYSQL_ROOT_PASSWORD"  |  Кодировка: utf8mb4_unicode_ci
+#
+# 4. Запускаем все остальные сервисы
+#    sudo docker compose up -d && sudo docker compose logs -f
 
 # ******************************
 
 # ПОВТОРНЫЕ ЗАПУСКИ
-# 
+#
 # Просмотр логов указанного сервиса
 #   sudo docker compose logs -f <имя_сервиса>
-# 
+#
 # Скачиваем свежие версии образов
 #   sudo docker compose pull
 #
@@ -31,7 +32,7 @@
 #
 # Останавливаем и удаляем контейнеры, удаляем сети и анонимные тома (именованные тома с данными сохраняются)
 #   sudo docker compose down
-
+#
 # Полная команда для обновления всех сервисов
 #   sudo docker compose down && sudo docker compose pull && sudo docker compose build --no-cache --pull && sudo docker compose up -d --force-recreate && sudo docker compose logs -f
 
@@ -140,11 +141,11 @@ services:
       - database__connection__database=${site1_db_name}
 
       # Email settings - https://docs.ghost.org/config#mail
-      - mail__from=no-reply@site1.com  # От кого идут письма
+      - mail__from=info@mg.site1.com  # От кого идут письма
       - mail__transport=SMTP  # Тип транспорта — SMTP
-      - mail__options__host=smtp.gmail.com  # SMTP сервер
-      - mail__options__port=587  # Порт с TLS
-      # - mail__options__secure=true  # Использовать TLS
+      - mail__options__host=smtp.eu.mailgun.org  # SMTP сервер
+      - mail__options__port=587  # STARTTLS порт (рекомендуется Mailgun)
+      - mail__options__secure=false  # Использовать STARTTLS, а не прямой TLS
       - mail__options__auth__user=${site1_mail_user}  # Пользователь SMTP
       - mail__options__auth__pass=${site1_mail_pass}  # Пароль SMTP
 
@@ -203,11 +204,11 @@ services:
       - database__connection__database=${site2_db_name}
 
       # Email settings - https://docs.ghost.org/config#mail
-      - mail__from=no-reply@site2.com  # От кого идут письма
+      - mail__from=info@mg.site2.com  # От кого идут письма
       - mail__transport=SMTP  # Тип транспорта — SMTP
-      - mail__options__host=smtp.gmail.com  # SMTP сервер
-      - mail__options__port=587  # Порт с TLS
-      # - mail__options__secure=true  # Использовать TLS
+      - mail__options__host=smtp.eu.mailgun.org  # SMTP сервер
+      - mail__options__port=587  # STARTTLS порт (рекомендуется Mailgun)
+      - mail__options__secure=false  # Использовать STARTTLS, а не прямой TLS
       - mail__options__auth__user=${site2_mail_user}  # Пользователь SMTP
       - mail__options__auth__pass=${site2_mail_pass}  # Пароль SMTP
 
@@ -247,4 +248,4 @@ volumes:
   caddy_data:
   caddy_config:
   ghost_site1_content:
-  ghost_site2_content:
+  # ghost_site2_content:

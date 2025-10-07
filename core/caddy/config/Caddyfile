@@ -23,24 +23,24 @@ www.site1.com {
 }
 ####################
 
-# site2
-####################
-site2.com, admin.site2.com {
-  # Базовые правила для всех сайтов
-  import base site2
+# # site2
+# ####################
+# site2.com, admin.site2.com {
+#   # Базовые правила для всех сайтов
+#   import base site2
 
-  # Логи доступа к сайту (не обязательно)
-  import logging site2
+#   # Логи доступа к сайту (не обязательно)
+#   import logging site2
 
-  # Правила для сайтов без Cloudflare
-  import origin site2
-}
+#   # Правила для сайтов без Cloudflare
+#   import origin site2
+# }
 
-# Redirect www -> root domain
-www.site2.com {
-  redir https://site2.com{uri}
-}
-####################
+# # Redirect www -> root domain
+# www.site2.com {
+#   redir https://site2.com{uri}
+# }
+# ####################
 
 # example (правила для сайтов без Cloudflare)
 ####################
