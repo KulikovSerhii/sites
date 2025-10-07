@@ -42,19 +42,60 @@
       * #### Разрешить все исходящие соединения по умолчанию
         - `sudo ufw default allow outgoing`
 
-      * #### Разрешить входящие подключения на порт 2509 TCP (SSH)
+      * #### Разрешить входящие подключения на порт 2509 TCP (например это SSH)
         - `sudo ufw allow 2509/tcp`
 
       * #### Включить UFW с применением всех вышеуказанных правил
         - `sudo ufw enable`
 
-      * #### Перечитывает правила UFW из конфигов и применяет их заново
+      * #### Перезагрузить правила UFW из конфигов и применить их заново
         - `sudo ufw reload`
 
       * #### Проверить активность и правила UFW в подробном виде
         - `sudo ufw status verbose`
 
-  2. #### Настройки iptables
+  2. #### Настройки iptables для Docker
+
+      **Packet filtering and firewalls**
+      https://docs.docker.com/engine/network/packet-filtering-firewalls/
+
+      * #### Очистить цепочку DOCKER-USER
+        - `sudo iptables -F DOCKER-USER;`
+        - `sudo ip6tables -F DOCKER-USER;`
+
+      * #### Разрешаем уже существующие соединения (исходящие из контейнера) – обязательно в самом начале!
+        - `sudo iptables  -I DOCKER-USER -m state --state RELATED,ESTABLISHED -j ACCEPT;`
+        - `sudo ip6tables -I DOCKER-USER -m state --state RELATED,ESTABLISHED -j ACCEPT;`
+
+      * #### Разрешаем исходящий трафик с контейнеров на основной интерфейс, через который идёт интернет
+
+        ```sh
+        # Определяем основной сетевой интерфейс
+        OUT_IF=$(ip route get 8.8.8.8 | awk '{for(i=1;i<=NF;i++){if($i=="dev"){print $(i+1)}}}');
+
+        sudo iptables  -A DOCKER-USER -o $OUT_IF -j ACCEPT;
+        sudo ip6tables -A DOCKER-USER -o $OUT_IF -j ACCEPT;
+        ```
+
+      * #### Добавляем правила в цепочку DOCKER-USER (разрешаем доступ к серверу только с IP Cloudflare из переменной CLOUDFLARE_IPS внутри файла .env)
+CLOUDFLARE_IPS=$(grep '^CLOUDFLARE_IPS=' .env | cut -d '"' -f2);
+for ip in $CLOUDFLARE_IPS; do
+  if [[ "$ip" =~ : ]]; then
+    sudo ip6tables -A DOCKER-USER -p tcp -m multiport --dports 80,443 -s $ip -j ACCEPT
+    sudo ip6tables -A DOCKER-USER -p udp --dport 443 -s $ip -j ACCEPT
+  else
+    sudo iptables -A DOCKER-USER -p tcp -m multiport --dports 80,443 -s $ip -j ACCEPT
+    sudo iptables -A DOCKER-USER -p udp --dport 443 -s $ip -j ACCEPT
+  fi
+done;
+sudo iptables  -A DOCKER-USER -j DROP;
+sudo ip6tables -A DOCKER-USER -j DROP;
+
+# Проверяем правила цепочки DOCKER-USER
+sudo iptables  -L DOCKER-USER -n -v;
+sudo ip6tables -L DOCKER-USER -n -v;
+
+
 
 [01]: https://docs.docker.com/engine/install/ubuntu/
 [02]: https://github.com/TryGhost/ghost-docker/blob/main/help
