@@ -34,7 +34,24 @@
       _Docker сам настраивает iptables, поэтому UFW не влияет на контейнеры Docker_
 
       * #### Сбросить текущие правила UFW
-        - `sudo ufw reset`
+        
+
+```bash
+sudo ufw reset
+```
+
+```shell
+sudo ufw reset
+```
+
+          ```shell
+          sudo ufw reset
+          ```
+
+```js
+let text = "пример кода";
+console.log(text);
+```
 
       * #### Заблокировать все входящие соединения по умолчанию
         - `sudo ufw default deny incoming`
