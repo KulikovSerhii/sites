@@ -1,6 +1,13 @@
 <br>
 
-<p align="center"><img src="https://user-images.githubusercontent.com/65487235/157884383-1b75feb1-45d8-4430-b636-3f7e06577347.png" alt="Ghost" width="200px"></p>
+<p align="center">
+  <a href="https://ghost.org/#gh-light-mode-only" target="_blank">
+    <img src="https://user-images.githubusercontent.com/65487235/157884383-1b75feb1-45d8-4430-b636-3f7e06577347.png" alt="Ghost" width="200px">
+  </a>
+  <a href="https://ghost.org/#gh-dark-mode-only" target="_blank">
+    <img src="https://user-images.githubusercontent.com/65487235/157849205-aa24152c-4610-4d7d-b752-3a8c4f9319e6.png" alt="Ghost" width="200px">
+  </a>
+</p>
 
 <br>
 
